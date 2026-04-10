@@ -46,12 +46,21 @@ pub struct NvLinkConfig {
     /// include port number as well if required eg. https://127.0.0.1:4010
     #[serde(default = "default_nmx_m_endpoint")]
     pub nmx_m_endpoint: String,
+
+    /// NMX-C gRPC endpoint URL used to create client connections, e.g. http://127.0.0.1:9601
+    #[serde(default = "default_nmx_c_endpoint")]
+    pub nmx_c_endpoint: String,
+
     /// Set to true if NMX-M doesn't adhere to security requirements. Defaults to false
     pub allow_insecure: bool,
 }
 
 fn default_nmx_m_endpoint() -> String {
     "localhost".to_string()
+}
+
+fn default_nmx_c_endpoint() -> String {
+    "http://127.0.0.1:9601".to_string()
 }
 
 impl Default for NvLinkConfig {
@@ -61,6 +70,7 @@ impl Default for NvLinkConfig {
             monitor_run_interval: Self::default_monitor_run_interval(),
             nmx_m_operation_timeout: Self::default_nmx_m_operation_timeout(),
             nmx_m_endpoint: "localhost".to_string(),
+            nmx_c_endpoint: default_nmx_c_endpoint(),
             allow_insecure: false,
         }
     }
@@ -91,6 +101,7 @@ mod test {
                 monitor_run_interval: std::time::Duration::from_secs(33),
                 nmx_m_operation_timeout: std::time::Duration::from_secs(21),
                 nmx_m_endpoint: "localhost".to_string(),
+                nmx_c_endpoint: default_nmx_c_endpoint(),
                 allow_insecure: true,
             }
         );

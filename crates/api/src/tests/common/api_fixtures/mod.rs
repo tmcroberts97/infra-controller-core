@@ -58,6 +58,7 @@ use futures::FutureExt as _;
 use health_report::{HealthReport, HealthReportApplyMode};
 use ipnetwork::IpNetwork;
 use lazy_static::lazy_static;
+use libnmxc::NmxcPool;
 use measured_boot::pcr::PcrRegisterValue;
 use model::attestation::spdm::Verifier;
 use model::firmware::{Firmware, FirmwareComponent, FirmwareComponentType, FirmwareEntry};
@@ -143,7 +144,6 @@ use crate::tests::common::api_fixtures::network_segment::{
 };
 use crate::tests::common::rpc_builder::VpcCreationRequest;
 use crate::tests::common::test_certificates::TestCertificateProvider;
-use libnmxc::NmxcPool;
 
 pub mod dpu;
 pub mod endpoint_explorer;
@@ -1624,6 +1624,7 @@ pub async fn create_test_env_with_overrides(
         scout_stream_registry: scout_stream::ConnectionRegistry::new(),
         rms_client: rms_sim.as_rms_client(),
         nmxm_pool: nmxm_sim.clone(),
+        nmxc_client_pool: nmxc_sim.clone(),
         work_lock_manager_handle: work_lock_manager_handle.clone(),
         machine_state_handler_enqueuer: Enqueuer::new(db_pool.clone()),
         metric_emitter: ApiMetricsEmitter::new(&test_meter.meter()),

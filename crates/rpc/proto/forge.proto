@@ -6970,6 +6970,7 @@ message RackManagerForgeResponse {
 message MachineNVLinkInfo {
   common.NVLinkDomainId domain_uuid = 1;
   repeated NVLinkGpu gpus = 2;
+  string chassis_serial = 3;
 }
 
 message UpdateMachineNvLinkInfoRequest {

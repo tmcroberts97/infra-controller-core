@@ -77,8 +77,6 @@ pub struct Api {
     pub(crate) scout_stream_registry: ConnectionRegistry,
     #[allow(unused)]
     pub(crate) rms_client: Option<Arc<dyn RmsApi>>,
-    #[allow(dead_code)]
-    pub(crate) nmxm_pool: Arc<dyn NmxmClientPool>,
     pub(crate) nmxc_client_pool: Arc<dyn NmxcPool>,
     pub(crate) work_lock_manager_handle: WorkLockManagerHandle,
     pub(crate) dpf_sdk: Option<Arc<dyn DpfOperations>>,

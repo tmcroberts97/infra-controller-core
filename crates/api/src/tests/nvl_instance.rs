@@ -589,6 +589,13 @@ async fn test_nvl_partition_monitor_adds_successful_partitions_when_some_creates
 async fn test_create_instances_with_nvl_configs_same_logical_partition_different_domains(
     pool: sqlx::PgPool,
 ) {
+    if !nmxc_simulator_tests_enabled() {
+        println!(
+            "skipping test_create_instances_with_nvl_configs_same_logical_partition_different_domains as nmxc simulator tests are not enabled"
+        );
+        return;
+    }
+
     let mut config = common::api_fixtures::get_config();
     if let Some(nvlink_config) = config.nvlink_config.as_mut() {
         nvlink_config.enabled = true;
@@ -1286,7 +1293,7 @@ async fn test_create_instance_remove_from_default_partition(pool: sqlx::PgPool) 
 
     assert_eq!(discovery_info.gpus.len(), 4);
 
-    // There should be no partitions in the DB, but one in NMX-M
+    // There should be no partitions in the DB, but the default partition on NMX-C (sim).
     let request_all = tonic::Request::new(rpc::forge::NvLinkPartitionSearchFilter {
         name: None,
         tenant_organization_id: None,
@@ -1299,19 +1306,33 @@ async fn test_create_instance_remove_from_default_partition(pool: sqlx::PgPool) 
         .unwrap();
     assert_eq!(ids_all.partition_ids.len(), 0);
 
-    let nmxm_sim_client = env
-        .nmxm_pool
-        .create_client("localhost:4010", None)
+    let nmxc_sim_client = env
+        .nmxc_sim
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601"))
         .await
         .unwrap();
-    let nmx_m_partitions = nmxm_sim_client.get_partitions_list().await.unwrap();
-    assert_eq!(nmx_m_partitions.len(), 1);
-    assert_eq!(nmx_m_partitions[0].partition_id, 32766);
-    let members = match nmx_m_partitions[0].members.as_ref() {
-        libnmxm::nmxm_model::PartitionMembers::Ids(ids) => ids,
-        _ => panic!("Expected IDs partition members"),
-    };
-    assert_eq!(members.len(), 16);
+    let nmxc_partitions = nmxc_sim_client
+        .get_partition_info_list(GetPartitionInfoListRequest {
+            context: Some(libnmxc::nmxc_model::Context {
+                context: String::new(),
+            }),
+            partition_id_list: vec![],
+            partition_name_list: vec![],
+            gateway_id: libnmxc::NMX_C_GATEWAY_ID.into(),
+        })
+        .await
+        .unwrap()
+        .partition_info_list;
+    assert_eq!(nmxc_partitions.len(), 1);
+    assert_eq!(
+        nmxc_partitions[0]
+            .partition_id
+            .as_ref()
+            .expect("partition id")
+            .partition_id,
+        32766
+    );
+    assert_eq!(nmxc_partitions[0].gpu_uid_list.len(), 12);
 
     let gpus: Vec<Gpu> = discovery_info.gpus.to_vec();
     println!("{gpus:?}");
@@ -1355,18 +1376,33 @@ async fn test_create_instance_remove_from_default_partition(pool: sqlx::PgPool) 
         .unwrap();
     assert_eq!(ids_all.partition_ids.len(), 1);
 
-    // Should be two partitions in NMX-M, one for the default partition and one for the carbide-created one
-    let nmx_m_partitions = nmxm_sim_client.get_partitions_list().await.unwrap();
-    assert_eq!(nmx_m_partitions.len(), 2);
-    let default_partition = nmx_m_partitions
-        .iter()
-        .find(|p| p.partition_id == 32766)
+    let nmxc_sim_client = env
+        .nmxc_sim
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601"))
+        .await
         .unwrap();
-    let members = match default_partition.members.as_ref() {
-        libnmxm::nmxm_model::PartitionMembers::Ids(ids) => ids,
-        _ => panic!("Expected IDs partition members"),
-    };
-    assert_eq!(members.len(), 12);
+    let nmxc_partitions = nmxc_sim_client
+        .get_partition_info_list(GetPartitionInfoListRequest {
+            context: Some(libnmxc::nmxc_model::Context {
+                context: String::new(),
+            }),
+            partition_id_list: vec![],
+            partition_name_list: vec![],
+            gateway_id: libnmxc::NMX_C_GATEWAY_ID.into(),
+        })
+        .await
+        .unwrap()
+        .partition_info_list;
+    assert_eq!(nmxc_partitions.len(), 2);
+    let default_partition = nmxc_partitions
+        .iter()
+        .find(|p| {
+            p.partition_id
+                .as_ref()
+                .is_some_and(|id| id.partition_id == 32766)
+        })
+        .expect("default partition");
+    assert_eq!(default_partition.gpu_uid_list.len(), 8);
 }
 
 #[crate::sqlx_test]
@@ -2070,7 +2106,6 @@ async fn test_create_instance_with_nvl_config_use_nmxc_simulator(pool: sqlx::PgP
     }
     run_create_instance_with_nvl_config_nmxc_simulator_scenario(pool, false).await;
 }
-
 
 // mTLS scenario. For this test, the simulator needs to be configured with mTLS.
 // Ex: "sudo ./install_simulators.sh -p 9601 -n 1 -g nmx-c-nvlink_2.0.0_2025-04-23_01-10_internal.tar.gz  -i 127.0.0.0 -m enabled -t gb200_nvl36r1_c2g4_topology -d true -c /etc/nmx-controller/ytl-jhb01-tls.crt -k /etc/nmx-controller/ytl-jhb01-tls.key -a /etc/nmx-controller/ytl-jhb01-ca.crt -e mtls"

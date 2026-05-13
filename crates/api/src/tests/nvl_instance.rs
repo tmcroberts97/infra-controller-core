@@ -291,14 +291,25 @@ async fn test_detach_gpus_from_partition_by_clearing_nvlink_config(pool: sqlx::P
         .unwrap();
     assert_eq!(ids_all.partition_ids.len(), 1);
 
-    // Check that NMX-M was updated.
-    let nmxm_sim_client = env
-        .nmxm_pool
-        .create_client("localhost:4010", None)
+    // Check that NMX-C reflects the partition (in-memory / test sim client).
+    let nmxc_sim_client = env
+        .nmxc_sim
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601").expect("NMX-C endpoint URI"))
         .await
         .unwrap();
-    let nmx_m_partitions = nmxm_sim_client.get_partitions_list().await.unwrap();
-    assert_eq!(nmx_m_partitions.len(), 1);
+    let nmxc_partitions = nmxc_sim_client
+        .get_partition_info_list(GetPartitionInfoListRequest {
+            context: Some(libnmxc::nmxc_model::Context {
+                context: String::new(),
+            }),
+            partition_id_list: vec![],
+            partition_name_list: vec![],
+            gateway_id: libnmxc::NMX_C_GATEWAY_ID.into(),
+        })
+        .await
+        .unwrap()
+        .partition_info_list;
+    assert_eq!(nmxc_partitions.len(), 1);
 
     nvl_config.gpu_configs = vec![];
     let mut txn = pool.begin().await.unwrap();
@@ -327,9 +338,24 @@ async fn test_detach_gpus_from_partition_by_clearing_nvlink_config(pool: sqlx::P
         .unwrap();
     assert_eq!(ids_all.partition_ids.len(), 0);
 
-    // Check that NMX-M was updated.
-    let nmx_m_partitions = nmxm_sim_client.get_partitions_list().await.unwrap();
-    assert_eq!(nmx_m_partitions.len(), 0);
+    let nmxc_sim_client = env
+        .nmxc_sim
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601").expect("NMX-C endpoint URI"))
+        .await
+        .unwrap();
+    let nmxc_partitions = nmxc_sim_client
+        .get_partition_info_list(GetPartitionInfoListRequest {
+            context: Some(libnmxc::nmxc_model::Context {
+                context: String::new(),
+            }),
+            partition_id_list: vec![],
+            partition_name_list: vec![],
+            gateway_id: libnmxc::NMX_C_GATEWAY_ID.into(),
+        })
+        .await
+        .unwrap()
+        .partition_info_list;
+    assert_eq!(nmxc_partitions.len(), 0);
 
     // delete logical partition. As no physical partitions are present, we expect logical partition to be
     // fully deleted after we run one iteration of monitor
@@ -1308,7 +1334,7 @@ async fn test_create_instance_remove_from_default_partition(pool: sqlx::PgPool) 
 
     let nmxc_sim_client = env
         .nmxc_sim
-        .create_client(libnmxc::Endpoint::new("http://localhost:9601"))
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601").expect("NMX-C endpoint URI"))
         .await
         .unwrap();
     let nmxc_partitions = nmxc_sim_client
@@ -1378,7 +1404,7 @@ async fn test_create_instance_remove_from_default_partition(pool: sqlx::PgPool) 
 
     let nmxc_sim_client = env
         .nmxc_sim
-        .create_client(libnmxc::Endpoint::new("http://localhost:9601"))
+        .create_client(libnmxc::Endpoint::new("http://localhost:9601").expect("NMX-C endpoint URI"))
         .await
         .unwrap();
     let nmxc_partitions = nmxc_sim_client
@@ -1492,7 +1518,7 @@ async fn test_create_instance_add_to_existing_partition(pool: sqlx::PgPool) {
 
     let nmxc_sim_client = env
         .nmxc_sim
-        .create_client(libnmxc::Endpoint::new("localhost:4010"))
+        .create_client(libnmxc::Endpoint::new("http://localhost:4010").expect("NMX-C endpoint URI"))
         .await
         .unwrap();
     let nmxc_partitions = nmxc_sim_client
@@ -1810,7 +1836,7 @@ async fn test_create_instance_gpu_in_unknown_partition(pool: sqlx::PgPool) {
     // There should be an "unknown" partition in NMX-C (partition id 12345 from sim preset).
     let nmxc_sim_client = env
         .nmxc_sim
-        .create_client(libnmxc::Endpoint::new("localhost:4010"))
+        .create_client(libnmxc::Endpoint::new("http://localhost:4010").expect("NMX-C endpoint URI"))
         .await
         .unwrap();
     let nmxc_partitions = nmxc_sim_client

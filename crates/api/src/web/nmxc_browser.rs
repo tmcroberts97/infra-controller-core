@@ -121,4 +121,4 @@ pub async fn query(
     (StatusCode::OK, Html(browser.render().unwrap())).into_response()
 }
 
-impl super::Base for NmxmBrowser {}
+impl super::Base for NmxcBrowser {}

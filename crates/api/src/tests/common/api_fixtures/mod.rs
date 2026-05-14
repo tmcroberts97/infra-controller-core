@@ -32,8 +32,7 @@ use carbide_ib_fabric::ib::{self, IBFabricManagerImpl, IBFabricManagerType};
 use carbide_ipmi::IPMITool;
 use carbide_nvlink_manager::NvlPartitionMonitor;
 use carbide_nvlink_manager::config::NvLinkConfig;
-use carbide_nvlink_manager::nvlink::NmxmClientPool;
-use carbide_nvlink_manager::nvlink::test_support::{NmxcSimClient, NmxmSimClient};
+use carbide_nvlink_manager::nvlink::test_support::NmxcSimClient;
 use carbide_redfish::libredfish::test_support::{RedfishSim, RedfishSimTestOverrides};
 use carbide_site_explorer::SiteExplorer;
 use carbide_site_explorer::config::{SiteExplorerConfig, SiteExplorerExploreMode};
@@ -258,11 +257,11 @@ pub struct TestEnvOverrides {
     pub nmxc_default_partition: Option<bool>,
     pub nmxc_unknown_partition: Option<bool>,
     // After n create_requests succeed, they will start failing.
-    pub nmxm_fail_after_n_creates: Option<usize>,
+    pub nmxc_fail_after_n_creates: Option<usize>,
     pub compute_allocation_enforcement: Option<ComputeAllocationEnforcement>,
+    pub nmxc_simulator: Option<bool>,
     pub redfish_overrides: Option<RedfishOverrides>,
     pub nras_should_fail_parsing: Option<Arc<AtomicBool>>,
-    pub nmxc_simulator: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -368,7 +367,6 @@ pub struct TestEnv {
     pub test_meter: TestMeter,
     pub attestation_enabled: bool,
     pub site_explorer: SiteExplorer,
-    pub nmxm_pool: Arc<dyn NmxmClientPool>,
     pub nmxc_sim: Arc<dyn NmxcPool>,
     pub endpoint_explorer: MockEndpointExplorer,
     pub admin_segments: Vec<NetworkSegmentId>,
@@ -1448,17 +1446,6 @@ pub async fn create_test_env_with_overrides(
         Arc::new(RedfishSim::default())
     };
 
-    let nmxm_pool: Arc<dyn NmxmClientPool> =
-        Arc::new(if let Some(n) = overrides.nmxm_fail_after_n_creates {
-            NmxmSimClient::with_fail_after_n_creates(n)
-        } else if overrides.nmxc_default_partition == Some(true) {
-            NmxmSimClient::with_default_partition()
-        } else if overrides.nmxc_unknown_partition == Some(true) {
-            NmxmSimClient::with_unknown_partition()
-        } else {
-            NmxmSimClient::default()
-        });
-
     let nvlink_for_nmxc_sim = overrides
         .config
         .as_ref()
@@ -1470,7 +1457,7 @@ pub async fn create_test_env_with_overrides(
         Arc::new(NmxcSimClient::simulator_for_nvlink_config(
             &nvlink_for_nmxc_sim,
         ))
-    } else if let Some(n) = overrides.nmxm_fail_after_n_creates {
+    } else if let Some(n) = overrides.nmxc_fail_after_n_creates {
         Arc::new(NmxcSimClient::with_fail_after_n_creates(n))
     } else if overrides.nmxc_default_partition == Some(true) {
         Arc::new(NmxcSimClient::with_default_partition())
@@ -1916,7 +1903,6 @@ pub async fn create_test_env_with_overrides(
         attestation_enabled,
         test_meter,
         site_explorer,
-        nmxm_pool,
         nmxc_sim,
         endpoint_explorer: fake_endpoint_explorer,
         admin_segments,

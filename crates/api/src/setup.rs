@@ -27,7 +27,6 @@ use carbide_ib_fabric::IbFabricMonitor;
 use carbide_ib_fabric::ib::{self, IBFabricManager};
 use carbide_ipmi::IPMITool;
 use carbide_nvlink_manager::NvlPartitionMonitor;
-use carbide_nvlink_manager::nvlink::{NmxmClientPool, NmxmClientPoolImpl};
 use carbide_preingestion_manager::PreingestionManager;
 use carbide_redfish::libredfish::RedfishClientPool;
 use carbide_redfish::nv_redfish::NvRedfishClientPool;

@@ -519,7 +519,7 @@ async fn test_nvl_partition_monitor_adds_successful_partitions_when_some_creates
 
     // Fail after one create succeeds.
     let mut overrides = TestEnvOverrides::with_config(config);
-    overrides.nmxm_fail_after_n_creates = Some(1);
+    overrides.nmxc_fail_after_n_creates = Some(1);
 
     let env = common::api_fixtures::create_test_env_with_overrides(pool.clone(), overrides).await;
 
@@ -607,7 +607,7 @@ async fn test_nvl_partition_monitor_adds_successful_partitions_when_some_creates
     assert_eq!(
         ids_all.partition_ids.len(),
         1,
-        "expected exactly one partition in DB when one NMX-M create fails"
+        "expected exactly one partition in DB when one NMX-C create fails"
     );
 }
 

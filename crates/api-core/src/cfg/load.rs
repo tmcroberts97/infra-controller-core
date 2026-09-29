@@ -19,6 +19,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use carbide_nvlink_manager::config::NvLinkConfig;
 use eyre::WrapErr;
 use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map, Value};
@@ -327,6 +328,23 @@ pub fn parse_carbide_config(
 
     if let Some(config) = &config.dsx_exchange_event_bus {
         config.periodic_state_republish.validate()?;
+    }
+
+    let initial_domain_name = config.initial_domain_name.clone();
+    let nvlink_config = config
+        .nvlink_config
+        .get_or_insert_with(NvLinkConfig::default);
+    if nvlink_config.apply_default_nmx_c_tls(
+        Path::new(NvLinkConfig::DEFAULT_NMX_C_CLIENT_TLS_DIR),
+        Path::new(NvLinkConfig::DEFAULT_NMX_C_FALLBACK_CA_CERT),
+        initial_domain_name.as_deref(),
+    ) {
+        tracing::info!(
+            tls_dir = NvLinkConfig::DEFAULT_NMX_C_CLIENT_TLS_DIR,
+            ca_cert = ?nvlink_config.nmx_c_tls_ca_cert_path,
+            authority = ?nvlink_config.nmx_c_tls_authority,
+            "Using default NMX-C client certificate for NvLink partitioning"
+        );
     }
 
     // Publish the configured tool list so the admin-UI sidebar and per-machine
